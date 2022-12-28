@@ -1,4 +1,4 @@
-This is the python code of PSTDF and datasets in paper "Deep Forest and Pruned Syntax Tree-based Classification Method ";
+The python code of PSTDF and datasets in paper "Deep Forest and Pruned Syntax Tree-based Classification Method ";
 
 All code running in python3.6;
 
