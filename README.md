@@ -1,6 +1,8 @@
-This is the python code of PSTDF and datasets in paper "Deep Forest and Pruned Syntax Tree-based Classification Method "
+This is the python code of PSTDF and datasets in paper "Deep Forest and Pruned Syntax Tree-based Classification Method ";
 
-All code running in python3.6
+All code running in python3.6;
+
+The main function is in main.py;
 
 The following libraries are required to run the PSTDF：
 
