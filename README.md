@@ -14,6 +14,7 @@ numpy==1.19.5
 
 pandas==0.20.3
 
+deep-forest==0.1.5
 
 
 
