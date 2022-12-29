@@ -29,14 +29,14 @@ class DTForest(object):
             batch = get_batch(data, index, self.batch_size)
             index += self.batch_size
             x, y = batch
-            # 计算每个语句序列的长度
+            # Calculate the length of each sentence
             lens = [len(item) for item in x]
-            # 找到最长的语句序列
+            # find the longest sequence of sentences
             max_len = max(lens)
             encodes = []
-            # 逐个语句序列进行处理
+            # Process the sequence of statements one by one
             for i in range(self.batch_size):
-                # 逐个词向量进行处理
+                # Process word vector by word
                 for j in range(lens[i]):
                     encodes.append(x[i][j])
             encodes = self.encoder(encodes, sum(lens))
