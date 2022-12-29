@@ -11,32 +11,32 @@ from deepforest import CascadeForestClassifier
 from PSTDF import DTForest
 import xml.dom.minidom
 import csv
-# 指定文件夹下所有源代码文件全部转换成csv
-def code2csv(input_file, output_file):
-    # 漏洞标签对应表
+# Convert all source code files in the specified folder to csv
+def code2tsv(input_file, output_file):
+    # Vulnerability label list
     vul2dic = {"none": 0}
     maxLabel = vul2dic["none"]
-    # 设置输出目录及文件名
+    # Set the output directory and output file name
     outputf = open(output_file + "/code.tsv", "w", encoding="utf8", newline='')
-    # 读取文件夹下的文件列表
+    # Read the list of files under the folder
     fileList = os.listdir(input_file)
     rows = []
     for i in range(0, len(fileList)):
         if fileList[i].split(".")[1] == "xml":
             continue
         else:
-            # 读取java源代码
+            # read the java source code
             inputf = open(input_file + "/" + fileList[i], "r")
-            # 读取相应的xml描述文件，提取漏洞类型及标签
+            # Read the corresponding xml description file, extract the vulnerability type and label
             dom = xml.dom.minidom.parse(input_file + "/" + fileList[i].split(".")[0] + ".xml")
             root = dom.documentElement
-            # 提取是否存在漏洞的标记
+            # Extract flags for vulnerabilities
             vulnerability = root.getElementsByTagName('vulnerability')
-            # 漏洞存在则提取具体的漏洞类型
+            # If a vulnerability exists, extract the specific vulnerability type
             label = vul2dic['none']
             if vulnerability[0].firstChild.data == "true":
                 category = root.getElementsByTagName('category')[0].firstChild.data
-                # 遍历漏洞标签对应表，若无该类型漏洞则添加，若有则给标签赋值
+                # Traverse the table corresponding to the vulnerability label, if there is no such type of vulnerability, add it, if there is, assign a value to the label
                 noThisCategory = True
                 for key in vul2dic:
                     if maxLabel < vul2dic[key]:
@@ -50,7 +50,7 @@ def code2csv(input_file, output_file):
                     vul2dic[str(category)] = maxLabel
                     label = vul2dic[str(category)]
             else:
-                # 无漏洞代码，标签标记为无漏洞
+                # Non-vulnerable code, tagged as non-vulnerable
                 label = vul2dic['none']
             s = inputf.read()
             s = s.replace("	", "    ")
@@ -58,18 +58,18 @@ def code2csv(input_file, output_file):
             row = (i, s, label)
             rows.append(row)
             inputf.close()
-    # 指定用制表符分割
+    # Specify tab-delimited
     writer = csv.writer(outputf, delimiter='\t')
-    # 写入CSV
+    # write CSV
     writer.writerows(rows)
     outputf.close()
     print(vul2dic)
     return None
-def csv2Ast(input_path, output_path):
+# Convert source code to AST
+def tsv2Ast(input_path, output_path):
     def parse_program(func):
-        # 对源代码编译单元进行转换抽象语法树
+        # Transforms the source code compilation unit into an abstract syntax tree
         tree = javalang.parse.parse(func)
-        # 对代码片段进行分析，转换成抽象语法树
         # tokens = javalang.tokenizer.tokenize(func)
         # parser = javalang.parser.Parser(tokens)
         # tree = parser.parse_member_declaration()
@@ -78,33 +78,32 @@ def csv2Ast(input_path, output_path):
     source = pd.read_csv(input_path, delimiter="\t", header=None, encoding='utf-8')
     source.columns = ['id', 'code', 'label']
     source['code'] = source['code'].apply(parse_program)
-    # 抽象语法树持久化存储在pkl文件中
+    # The abstract syntax tree is persistently stored in the pkl file
     source.to_pickle(output_path + "/ast.pkl")
-# 将抽象语法树通过改进ASTNN编码层转换成向量
+# Convert the abstract syntax tree into a vector by improved encoding layer
 def Ast2VecImproved(input_path, output_path, filename):
     trees = pd.read_pickle(input_path)
-    # AST转换成语句序列
+    # AST is converted into a sequence of statements
     def Ast_to_sequences(ast):
         sequence = []
         Tools.get_sequence_BFS(ast, sequence)
         return sequence
-    # 提取语句序列
+    # Extract sequence of sentences
     word_sequences = trees['code'].apply(Ast_to_sequences)
     str_sequences = [' '.join(c) for c in word_sequences]
     trees['code'] = pd.Series(str_sequences)
-    # 使用语句序列训练word2vec模型
-    # size:特征向量的维度,workers:并行数,sg=1:使用skip-gram算法,min_count:词频截断,少于min_count的词则丢弃
+    # Train a word2vec model with a sequence of sentences
     model = Word2Vec(word_sequences, size=128, workers=16, sg=1, min_count=3)
     if not os.path.exists(output_path + '/embedding'):
         os.mkdir(output_path + '/embedding')
-    # word2vec模型持久化
+    # word2vec model persistence
     model.save(output_path + '/embedding/' + str(128)+'improved')
-    # 获取训练好的所有词
+    # Get all trained words
     vocab = model.wv.vocab
     max_token = model.wv.syn0.shape[0]
     def tree_to_index(node):
         token = node.token
-        # 表达式子树裁剪，丢弃包引用等无用节点
+        # Expression subtree pruning, discarding useless nodes such as package references
         if token not in ['Import', 'PackageDeclaration']:
             result = [vocab[token].index if token in vocab else max_token]
             children = node.children
@@ -122,14 +121,14 @@ def Ast2VecImproved(input_path, output_path, filename):
 
     trees = pd.read_pickle(input_path)
     trees['code'] = trees['code'].apply(trans2seq_BFS)
-    # 向量持久化到文件
+    # Vector persistence to file
     trees.to_pickle(output_path + "/" + filename)
 
 def forest(Word2VecPath, dataPath):
     acca = []
     rcca = []
     f1a = []
-    for num in range(0, 1):  #这个循环是计算平均性能用的，仅运行模型的话循环次数设置为1就行
+    for num in range(0, 1):  #This loop is used to calculate the average performance. If you only run the model, set the number of loop to 1.
         data = pd.read_pickle(dataPath)
         data_num = len(data)
         ratios = [int(r) for r in "6:4".split(':')]
@@ -140,8 +139,9 @@ def forest(Word2VecPath, dataPath):
         word2vec = Word2Vec.load(Word2VecPath).wv
         embeddings = np.zeros((word2vec.syn0.shape[0] + 1, word2vec.syn0.shape[1]), dtype="float32")
         embeddings[:word2vec.syn0.shape[0]] = word2vec.syn0
+        # word embedding dimension
         ENCODE_DIM = 128
-        # 标签种类数
+        # Number of label types
         LABELS = 12
         MAX_TOKENS = word2vec.syn0.shape[0]
         EMBEDDING_DIM = word2vec.syn0.shape[1]
@@ -169,24 +169,24 @@ def forest(Word2VecPath, dataPath):
 
 
 def main():
-    # 源码读取路径
+    # Java source code reading path
     input_file_path = "./datasets/OWASP/code"
-    # tsv文件输出路径
+    # tsv output path
     output_file_path = "./tsv/"
-    # 源码的tsv读取路径
-    code_csv_path = output_file_path + "code.tsv"
-    # 训练、测试路径
+    # Source code tsv reading path
+    code_tsv_path = output_file_path + "code.tsv"
+    # training, testing path
     train_path = "./train"
-    # 存储AST的pkl文件的路径
+    # The path to the pkl file where the AST is stored
     ast_path = train_path + "/ast.pkl"
-    # 对源码进行处理，转换成csv
-    # code2csv(input_file_path, output_file_path)
-    # 对csv格式的源码进行处理，转换成抽象语法树并持久化在pkl文件中
-    # csv2Ast(code_csv_path, train_path)
-    # 将训练集的AST转换成语句序列
+    # Process the source code and convert it into tsv
+    code2tsv(input_file_path, output_file_path)
+    # Process the source code in tsv format, convert it into an abstract syntax tree and persist it in the pkl file
+    tsv2Ast(code_tsv_path, train_path)
+    # training and testing
     improved_start_time = time.time()
     Ast2VecImproved(ast_path, train_path, "data_improved.pkl")
-    forest("C:/Users/fwk/Videos/MyAST/train/Experiment1/embedding_Experiment1/256improved", "C:/Users/fwk/Videos/MyAST/train/Experiment1/data_improved.pkl")
+    forest(train_path+"/embedding/128improved", train_path+"/data_improved.pkl")
     improved_end_time = time.time()
     print("improved ASTNN time cost:%.4f s" % (improved_end_time - improved_start_time))
 if __name__ == '__main__':
