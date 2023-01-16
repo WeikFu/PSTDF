@@ -2,7 +2,7 @@ The python code of PSTDF and datasets in paper "Deep Forest and Pruned Syntax Tr
 
 All code running in python3.6;
 
-The main function is in main.py, if you do not need to run the code of other experiments in the paper, you can directly ignore the python code in the Experiment folder if you only use PSTDF.
+The main function is in main.py, if you do not need to run the code of other experiments in the paper, you can directly ignore the python code in the "Experiments" folder if you only use PSTDF.
 
 The following libraries are required to run the PSTDF：
 
